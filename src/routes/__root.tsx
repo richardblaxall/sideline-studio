@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AccessProvider } from "../components/sideline/access-provider";
 
 function NotFoundComponent() {
   return (
@@ -77,14 +78,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Sideline — Sports Photography Wire" },
+      {
+        name: "description",
+        content:
+          "Sideline is an editorial sports photography wire: browse season collections, search athletes by name or jersey number, and license match frames.",
+      },
+      { name: "author", content: "Sideline Sports Wire" },
+      { property: "og:title", content: "Sideline — Sports Photography Wire" },
+      {
+        property: "og:description",
+        content: "Editorial match photography, tagged by athlete and delivered to clients.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -119,8 +126,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AccessProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AccessProvider>
     </QueryClientProvider>
   );
 }
