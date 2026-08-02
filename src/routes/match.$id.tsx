@@ -19,16 +19,13 @@ import {
 } from "@/lib/sideline-queries";
 
 export const Route = createFileRoute("/match/$id")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: typeof search["token"] === "string" ? (search["token"] as string) : "",
-  }),
   head: () => ({
     meta: [
       { title: "Match Gallery — Sideline Sports Wire" },
       {
         name: "description",
         content:
-          "Full match gallery with athlete tagging, capture data and high-resolution delivery for accredited clients.",
+          "Full match gallery with athlete tagging and high-resolution delivery for accredited clients.",
       },
       { property: "og:title", content: "Match Gallery — Sideline Sports Wire" },
       {
@@ -42,8 +39,7 @@ export const Route = createFileRoute("/match/$id")({
 
 function MatchGallery() {
   const { id } = Route.useParams();
-  const { token: urlToken } = Route.useSearch();
-  const { isUnlockedFor, previews, token, unlock } = useAccess();
+  const { isUnlocked: unlocked, previews, token, ensurePreviews } = useAccess();
   const runDownload = useServerFn(downloadOriginal);
 
   const [query, setQuery] = useState("");
@@ -52,7 +48,6 @@ function MatchGallery() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
-  const autoTried = useRef(false);
 
   const eventQuery = useQuery({ queryKey: ["event", id], queryFn: () => fetchEvent(id) });
   const photosQuery = useQuery({
@@ -60,16 +55,14 @@ function MatchGallery() {
     queryFn: () => fetchEventPhotos(id),
   });
 
-  const unlocked = isUnlockedFor(id);
   const event = eventQuery.data;
   const photos = photosQuery.data ?? [];
 
-  // ?token=… unlocks the gallery on arrival.
+  // Once the client is logged in, swap in clean previews for this gallery.
   useEffect(() => {
-    if (!urlToken || unlocked || autoTried.current) return;
-    autoTried.current = true;
-    void unlock({ eventId: id, token: urlToken });
-  }, [urlToken, unlocked, id, unlock]);
+    ensurePreviews(id);
+  }, [id, unlocked, ensurePreviews]);
+
 
   const athletes = useMemo(() => {
     const map = new Map<string, SidelinePhoto["athletes"][number]>();
@@ -121,8 +114,9 @@ function MatchGallery() {
         onQueryChange={setQuery}
         placeholder="Search this match — athletes, jersey numbers, captions"
         onLoginClick={() => setLoginOpen(true)}
-        eventId={id}
       />
+
+
 
       <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-8">
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-label="Breadcrumb">
@@ -260,12 +254,8 @@ function MatchGallery() {
         onDownload={downloadOne}
       />
 
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        eventId={id}
-        eventTitle={event?.title ?? null}
-      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+
     </div>
   );
 }

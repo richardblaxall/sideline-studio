@@ -171,7 +171,7 @@ function SeasonCollections() {
         </p>
       </footer>
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} eventId={null} />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }

@@ -1,10 +1,6 @@
-import { useCallback, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import type { SidelinePhoto } from "@/lib/sideline-queries";
-
-const LENS_SIZE = 240;
-const ZOOM = 2.6;
 
 type Props = {
   photo: SidelinePhoto;
@@ -16,35 +12,7 @@ type Props = {
 };
 
 export function PhotoTile({ photo, src, selectable, selected, onToggleSelect, onOpen }: Props) {
-  const frameRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const [lens, setLens] = useState<{ x: number; y: number; bgX: number; bgY: number } | null>(null);
-
   const ratio = photo.width && photo.height ? photo.width / photo.height : 1.5;
-
-  // Debounced through requestAnimationFrame so the lens tracks smoothly.
-  const handleMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const frame = frameRef.current;
-    if (!frame) return;
-    const rect = frame.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      setLens({
-        x,
-        y,
-        bgX: (x / rect.width) * 100,
-        bgY: (y / rect.height) * 100,
-      });
-    });
-  }, []);
-
-  const clearLens = useCallback(() => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    setLens(null);
-  }, []);
 
   return (
     <motion.div
@@ -53,11 +21,8 @@ export function PhotoTile({ photo, src, selectable, selected, onToggleSelect, on
       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
     >
       <div
-        ref={frameRef}
-        className="relative w-full cursor-zoom-in overflow-hidden"
+        className="relative w-full cursor-pointer overflow-hidden"
         style={{ aspectRatio: String(ratio) }}
-        onMouseMove={handleMove}
-        onMouseLeave={clearLens}
         onClick={() => onOpen(photo)}
         role="button"
         tabIndex={0}
@@ -77,22 +42,6 @@ export function PhotoTile({ photo, src, selectable, selected, onToggleSelect, on
           onContextMenu={(e) => e.preventDefault()}
           className="no-save size-full object-cover"
         />
-
-        {lens && (
-          <div
-            className="pointer-events-none absolute z-20 hidden overflow-hidden rounded-full border border-chrome/40 md:block"
-            style={{
-              width: LENS_SIZE,
-              height: LENS_SIZE,
-              left: lens.x - LENS_SIZE / 2,
-              top: lens.y - LENS_SIZE / 2,
-              backgroundImage: `url(${src})`,
-              backgroundRepeat: "no-repeat",
-              backgroundSize: `${ZOOM * 100}% ${ZOOM * 100}%`,
-              backgroundPosition: `${lens.bgX}% ${lens.bgY}%`,
-            }}
-          />
-        )}
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-chrome/85 to-transparent p-3 opacity-0 transition-opacity group-hover:opacity-100">

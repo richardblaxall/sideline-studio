@@ -17,17 +17,18 @@ function sign(payload: string): string {
   return createHmac("sha256", signingKey()).update(payload).digest("base64url");
 }
 
-/** Mints a short-lived access JWT-style token scoped to one event. */
-export function mintAccessToken(eventId: string): { token: string; expiresAt: string } {
+/** Mints a short-lived global client access token (all galleries). */
+export function mintAccessToken(): { token: string; expiresAt: string } {
   const exp = Math.floor(Date.now() / 1000) + TTL_SECONDS;
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const body = b64url(JSON.stringify({ sub: eventId, scope: "gallery", exp }));
+  const body = b64url(JSON.stringify({ sub: "all", scope: "client", exp }));
   const payload = `${header}.${body}`;
   return {
     token: `${payload}.${sign(payload)}`,
     expiresAt: new Date(exp * 1000).toISOString(),
   };
 }
+
 
 /** Verifies a token and returns the event id it grants access to. */
 export function verifyAccessToken(token: string | undefined | null): string | null {
