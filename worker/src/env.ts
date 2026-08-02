@@ -29,12 +29,14 @@ export const env = {
     return required("HIDRIVE_WEBDAV_PASS");
   },
 
-  // Supabase (the worker uses the service-role key directly — never expose it).
-  get SUPABASE_URL(): string {
-    return required("SUPABASE_URL");
+  // The app's ingest API base URL (the published app origin, e.g. https://<app>.lovable.app).
+  // The worker POSTs finished derivatives + metadata here; the app does all Supabase writes.
+  get APP_INGEST_URL(): string {
+    return required("APP_INGEST_URL").replace(/\/+$/, "");
   },
-  get SUPABASE_SERVICE_ROLE_KEY(): string {
-    return required("SUPABASE_SERVICE_ROLE_KEY");
+  // Shared secret for the app's /api/ingest/* routes (must match the app's INGEST_RECEIVE_SECRET).
+  get INGEST_RECEIVE_SECRET(): string {
+    return required("INGEST_RECEIVE_SECRET");
   },
 
   // Branding used in the watermark text.

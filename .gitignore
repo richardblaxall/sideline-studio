@@ -16,6 +16,10 @@ dist-ssr
 .nitro
 *.local
 
+# Lockfiles are not tracked (dependencies are managed by Lovable Cloud / installed on the VPS).
+package-lock.json
+worker/package-lock.json
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

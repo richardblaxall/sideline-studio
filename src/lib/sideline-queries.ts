@@ -83,6 +83,9 @@ export async function fetchEventPhotos(eventId: string): Promise<SidelinePhoto[]
       "id, event_id, public_watermarked_url, headline, caption, date_taken, width, height, exif_data, photo_athletes(athletes(id, full_name, jersey_number, team_name))",
     )
     .eq("event_id", eventId)
+    // Only published photos reach the public gallery; freshly ingested photos stay hidden
+    // (is_published=false) until explicitly approved.
+    .eq("is_published", true)
     .order("date_taken", { ascending: true });
   if (error) throw error;
 
