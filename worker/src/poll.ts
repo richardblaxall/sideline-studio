@@ -4,7 +4,7 @@
 
 import { listFolder } from "./hidrive-webdav.js";
 import { ingestPhoto } from "./ingest.js";
-import { supabase, assertOk } from "./supabase.js";
+import { postCheck } from "./app-client.js";
 import { env } from "./env.js";
 
 const JPEG_EXT = /\.jpe?g$/i;
@@ -21,22 +21,15 @@ export async function pollIngestFolder(eventId?: string | null): Promise<PollRes
   const files = await listFolder(env.HIDRIVE_INGEST_FOLDER);
   const candidates = files.filter((f) => JPEG_EXT.test(f.name));
 
-  // Dedupe against masters we've already fully ingested.
-  const done = new Set<string>();
-  const paths = candidates.map((c) => c.path);
-  if (paths.length) {
-    const { data, error } = await supabase
-      .from("photos")
-      .select("hidrive_original_path")
-      .in("hidrive_original_path", paths)
-      .eq("ingest_status", "done");
-    assertOk(error, "poll dedupe query");
-    for (const row of data ?? []) {
-      if (row.hidrive_original_path) done.add(row.hidrive_original_path);
-    }
+  // Ask the app which candidates are not already fully ingested — the worker has no direct DB
+  // access, so /api/ingest/check does the dedupe against ingest_status='done'.
+  let freshPaths = new Set<string>();
+  if (candidates.length) {
+    const newPaths = await postCheck(candidates.map((c) => c.path));
+    freshPaths = new Set(newPaths);
   }
 
-  const fresh = candidates.filter((c) => !done.has(c.path));
+  const fresh = candidates.filter((c) => freshPaths.has(c.path));
   const ingested: string[] = [];
   const failed: { path: string; error: string }[] = [];
 

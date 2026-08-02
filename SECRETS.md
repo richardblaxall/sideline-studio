@@ -2,17 +2,24 @@
 
 Secrets live in **two homes** because the pipeline is split across two runtimes:
 
-- **The app** runs on the Cloudflare Workers runtime (Lovable Cloud). It only reads from
-  Supabase and mints HiDrive REST sharelinks — pure JS, no native deps.
-- **The ingest worker** (`/worker`) runs standalone on a VPS under Node. It owns all the heavy
-  work (HiDrive WebDAV reads, metadata parsing, `sharp` derivatives, uploads).
+- **The app** runs on the Cloudflare Workers runtime (Lovable Cloud). It reads from Supabase,
+  mints HiDrive REST sharelinks, and — via the authenticated `/api/ingest/*` routes — performs
+  **all** Supabase writes on the worker's behalf (row upserts + storage uploads). Pure JS, no
+  native deps.
+- **The ingest worker** (`/worker`) runs standalone on a VPS under Node. It owns the heavy image
+  work (HiDrive WebDAV reads, metadata parsing, `sharp` derivatives), then POSTs the finished
+  result to the app. It holds **no Supabase credentials** — Lovable Cloud does not expose the
+  service-role key / database URL outside the app runtime.
 
 > **What is testable when.** Modules 1–4 + 6 — the storage buckets, the WebDAV ingest, the
-> metadata parser, and the public + private preview generation, plus the poller — are **fully
-> testable now** using only the WebDAV + Supabase credentials on the VPS worker. **Only the
-> in-app download half (module 5, `downloadOriginal` sharelinks) depends on the HiDrive REST
-> credential** (`HIDRIVE_CLIENT_ID` / `HIDRIVE_CLIENT_SECRET` / `HIDRIVE_REFRESH_TOKEN`). You
-> can ship and verify everything else before that credential clears.
+> metadata parser, and the public + private preview generation, plus the poller — are testable
+> once the **app is published** (the worker POSTs to `/api/ingest/*`, so those routes must exist
+> on the deployed origin and `INGEST_RECEIVE_SECRET` must be set app-side) using the WebDAV
+> credentials + `APP_INGEST_URL` + `INGEST_RECEIVE_SECRET` on the VPS worker. Ingested photos
+> land hidden (`is_published=false`), so you can push one through and inspect it privately before
+> publishing. **Only the in-app download half (module 5, `downloadOriginal` sharelinks) depends
+> on the HiDrive REST credential** (`HIDRIVE_CLIENT_ID` / `HIDRIVE_CLIENT_SECRET` /
+> `HIDRIVE_REFRESH_TOKEN`). You can ship and verify everything else before that credential clears.
 
 ## 1. App secrets — set as Lovable Cloud secrets (see `.env.example`)
 
@@ -20,7 +27,8 @@ Secrets live in **two homes** because the pipeline is split across two runtimes:
 | --- | --- |
 | `SUPABASE_URL` | Supabase project URL (managed by Lovable Cloud). |
 | `SUPABASE_PUBLISHABLE_KEY` | Anon/publishable key used by the auth middleware. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key used by server functions (bypasses RLS). |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key used by server functions + the `/api/ingest/*` routes (bypasses RLS). |
+| `INGEST_RECEIVE_SECRET` | Shared secret the worker must present (`x-ingest-secret`) to the `/api/ingest/receive` + `/api/ingest/check` routes. Set to the same value on the worker. |
 | `HIDRIVE_CLIENT_ID` | HiDrive OAuth2 app client id. **(module 5 only)** |
 | `HIDRIVE_CLIENT_SECRET` | HiDrive OAuth2 app client secret. **(module 5 only)** |
 | `HIDRIVE_REFRESH_TOKEN` | HiDrive OAuth2 refresh token. **(module 5 only)** |
@@ -36,8 +44,8 @@ Secrets live in **two homes** because the pipeline is split across two runtimes:
 | `HIDRIVE_WEBDAV_URL` | WebDAV base incl. user root. IONOS: `https://webdav.hidrive.ionos.com/users/<loginname>/` (Strato: `…strato.com…`). `hidrive_original_path` is stored relative to this. |
 | `HIDRIVE_WEBDAV_USER` | HiDrive WebDAV username. |
 | `HIDRIVE_WEBDAV_PASS` | HiDrive WebDAV password. |
-| `SUPABASE_URL` | Supabase project URL. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (VPS only — bypasses RLS to write rows + storage). |
+| `APP_INGEST_URL` | Base URL of the published app (e.g. `https://<app>.lovable.app`). The worker POSTs finished derivatives + metadata to `${APP_INGEST_URL}/api/ingest/*`. |
+| `INGEST_RECEIVE_SECRET` | Shared secret for the app's `/api/ingest/*` routes — **same value** as the app-side secret. No Supabase creds live on the worker. |
 | `BRAND` | Brand name shown in the watermark text. |
 | `HIDRIVE_INGEST_FOLDER` | Folder (relative to the WebDAV base) the poller scans. Default `ingest/`. |
 | `INGEST_TRIGGER_SECRET` | Shared secret for the optional Make.com HTTP trigger (`npm run serve`). |

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchIdRouteImport } from './routes/match.$id'
+import { Route as ApiIngestCheckRouteImport } from './routes/api/ingest/check'
+import { Route as ApiIngestReceiveRouteImport } from './routes/api/ingest/receive'
 import { Route as ApiPublicPreviewsSplatRouteImport } from './routes/api/public/previews.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +25,16 @@ const MatchIdRoute = MatchIdRouteImport.update({
   path: '/match/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIngestCheckRoute = ApiIngestCheckRouteImport.update({
+  id: '/api/ingest/check',
+  path: '/api/ingest/check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIngestReceiveRoute = ApiIngestReceiveRouteImport.update({
+  id: '/api/ingest/receive',
+  path: '/api/ingest/receive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPreviewsSplatRoute = ApiPublicPreviewsSplatRouteImport.update({
   id: '/api/public/previews/$',
   path: '/api/public/previews/$',
@@ -32,30 +44,54 @@ const ApiPublicPreviewsSplatRoute = ApiPublicPreviewsSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/ingest/check': typeof ApiIngestCheckRoute
+  '/api/ingest/receive': typeof ApiIngestReceiveRoute
   '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/ingest/check': typeof ApiIngestCheckRoute
+  '/api/ingest/receive': typeof ApiIngestReceiveRoute
   '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/ingest/check': typeof ApiIngestCheckRoute
+  '/api/ingest/receive': typeof ApiIngestReceiveRoute
   '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/match/$id' | '/api/public/previews/$'
+  fullPaths:
+    | '/'
+    | '/match/$id'
+    | '/api/ingest/check'
+    | '/api/ingest/receive'
+    | '/api/public/previews/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/match/$id' | '/api/public/previews/$'
-  id: '__root__' | '/' | '/match/$id' | '/api/public/previews/$'
+  to:
+    | '/'
+    | '/match/$id'
+    | '/api/ingest/check'
+    | '/api/ingest/receive'
+    | '/api/public/previews/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/match/$id'
+    | '/api/ingest/check'
+    | '/api/ingest/receive'
+    | '/api/public/previews/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MatchIdRoute: typeof MatchIdRoute
+  ApiIngestCheckRoute: typeof ApiIngestCheckRoute
+  ApiIngestReceiveRoute: typeof ApiIngestReceiveRoute
   ApiPublicPreviewsSplatRoute: typeof ApiPublicPreviewsSplatRoute
 }
 
@@ -75,6 +111,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ingest/check': {
+      id: '/api/ingest/check'
+      path: '/api/ingest/check'
+      fullPath: '/api/ingest/check'
+      preLoaderRoute: typeof ApiIngestCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ingest/receive': {
+      id: '/api/ingest/receive'
+      path: '/api/ingest/receive'
+      fullPath: '/api/ingest/receive'
+      preLoaderRoute: typeof ApiIngestReceiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/previews/$': {
       id: '/api/public/previews/$'
       path: '/api/public/previews/$'
@@ -88,6 +138,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MatchIdRoute: MatchIdRoute,
+  ApiIngestCheckRoute: ApiIngestCheckRoute,
+  ApiIngestReceiveRoute: ApiIngestReceiveRoute,
   ApiPublicPreviewsSplatRoute: ApiPublicPreviewsSplatRoute,
 }
 export const routeTree = rootRouteImport

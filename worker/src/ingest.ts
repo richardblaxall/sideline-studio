@@ -1,18 +1,18 @@
-// The ingest routine: one HiDrive master JPEG -> parsed row + two preview derivatives.
+// The ingest routine: one HiDrive master JPEG -> parsed metadata + two preview derivatives.
 // Runs on the VPS (Node) because it needs sharp (native libvips) and, ideally, exiftool.
-// Idempotent: re-running on the same hidrive_original_path updates the existing row and
-// overwrites its storage objects rather than creating duplicates.
+//
+// The worker no longer writes to Supabase directly (Lovable Cloud does not expose the
+// service-role key / database URL to it). Instead the finished derivatives + metadata are POSTed
+// to the app's /api/ingest/receive, which performs all Supabase writes. Idempotency (re-running
+// on the same hidrive_original_path updates the existing row, no duplicates) is enforced app-side.
 
-import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { fetchFileBytes } from "./hidrive-webdav.js";
 import { parseMetadata, type PhotoMetadata } from "./metadata.js";
-import { supabase, assertOk } from "./supabase.js";
+import { postReceive } from "./app-client.js";
 import { env } from "./env.js";
 
 const LONG_EDGE = 1600;
-const PRIVATE_BUCKET = "private-previews";
-const PUBLIC_BUCKET = "public-previews";
 
 export interface IngestArgs {
   /** Path relative to HIDRIVE_WEBDAV_URL, e.g. "ingest/NGU_20250914_0001.jpg". */
@@ -58,36 +58,6 @@ function buildWatermarkSvg(imgW: number, imgH: number, brand: string): string {
 </svg>`;
 }
 
-/** Find an athlete by case-insensitive full name, or create one. Returns the athlete id. */
-async function upsertAthlete(person: { full_name: string; jersey_number: string | null }): Promise<string> {
-  const { data: found, error: selErr } = await supabase
-    .from("athletes")
-    .select("id, jersey_number")
-    .ilike("full_name", person.full_name)
-    .maybeSingle();
-  assertOk(selErr, "athlete lookup");
-
-  if (found) {
-    // Backfill a jersey number if we now have one and the row lacks it.
-    if (person.jersey_number && !found.jersey_number) {
-      const { error } = await supabase
-        .from("athletes")
-        .update({ jersey_number: person.jersey_number })
-        .eq("id", found.id);
-      assertOk(error, "athlete jersey backfill");
-    }
-    return found.id;
-  }
-
-  const { data: inserted, error: insErr } = await supabase
-    .from("athletes")
-    .insert({ full_name: person.full_name, jersey_number: person.jersey_number })
-    .select("id")
-    .single();
-  assertOk(insErr, "athlete insert");
-  return inserted!.id;
-}
-
 export async function ingestPhoto(args: IngestArgs): Promise<IngestResult> {
   const { hidrivePath } = args;
   const eventId = args.eventId ?? null;
@@ -119,16 +89,7 @@ export async function ingestPhoto(args: IngestArgs): Promise<IngestResult> {
   // 2. Parse metadata (exiftool primary, exifr fallback).
   const metadata: PhotoMetadata = await parseMetadata(buffer);
 
-  // 3. Resolve a stable photo id (reuse the existing row's id when re-ingesting).
-  const { data: existing, error: findErr } = await supabase
-    .from("photos")
-    .select("id")
-    .eq("hidrive_original_path", hidrivePath)
-    .maybeSingle();
-  assertOk(findErr, "photo lookup");
-  const photoId = existing?.id ?? randomUUID();
-
-  // 4. Build the two ~1600px long-edge derivatives.
+  // 3. Build the two ~1600px long-edge derivatives.
   const baseBuffer = await sharp(buffer)
     .rotate() // auto-orient per EXIF before resizing
     .resize(LONG_EDGE, LONG_EDGE, { fit: "inside", withoutEnlargement: true })
@@ -145,83 +106,28 @@ export async function ingestPhoto(args: IngestArgs): Promise<IngestResult> {
     .jpeg({ quality: 88 })
     .toBuffer();
 
-  // 5. Upload derivatives (overwrite on re-ingest).
-  const cleanKey = `${photoId}/clean.jpg`;
-  const watermarkedKey = `${photoId}/watermarked.jpg`;
-
-  const cleanUpload = await supabase.storage
-    .from(PRIVATE_BUCKET)
-    .upload(cleanKey, cleanBuffer, { contentType: "image/jpeg", upsert: true });
-  assertOk(cleanUpload.error, "clean upload");
-
-  const wmUpload = await supabase.storage
-    .from(PUBLIC_BUCKET)
-    .upload(watermarkedKey, watermarkedBuffer, { contentType: "image/jpeg", upsert: true });
-  assertOk(wmUpload.error, "watermarked upload");
-
-  // The bucket stays PRIVATE (workspace guardrail blocks public buckets), so getPublicUrl's
-  // /object/public/... form would 404. Instead we store a stable, non-expiring same-origin path
-  // served by the app route src/routes/api/public/previews.$.tsx, which performs the anon-key
-  // object read (apikey header) that our anon SELECT policy on public-previews allows.
-  const publicUrl = `/api/public/previews/${watermarkedKey}`;
-
-
-  // 6. Upsert athletes and collect their ids.
-  const athleteIds: string[] = [];
-  for (const person of metadata.persons) {
-    athleteIds.push(await upsertAthlete(person));
-  }
-
-  // 7. Upsert the photo row.
-  //   clean_preview_url stores the in-bucket key (private bucket -> signed at read time);
-  //   public_watermarked_url stores the world-readable public URL.
-  const { error: photoErr } = await supabase.from("photos").upsert(
-    {
-      id: photoId,
-      event_id: eventId,
-      hidrive_original_path: hidrivePath,
-      public_watermarked_url: publicUrl,
-      clean_preview_url: cleanKey,
+  // 4. Hand the finished work to the app. The app owns all Supabase writes (row upsert, storage
+  //    uploads, athletes/photo_athletes, event photo_count) and assigns the stable photo id.
+  //    Two ~1600px JPEGs base64 (~1MB total) is well within request limits.
+  const { photo_id } = await postReceive({
+    hidrive_path: hidrivePath,
+    event_id: eventId,
+    metadata: {
       headline: metadata.headline,
       caption: metadata.caption,
       date_taken: metadata.date_taken,
       width: trueWidth,
       height: trueHeight,
-      exif_data: metadata.exif,
-      ingest_status: "done",
-      processed_at: new Date().toISOString(),
+      // ExifData is a fixed-key object; widen it to the transport's generic jsonb shape.
+      exif_data: metadata.exif as unknown as Record<string, unknown>,
+      persons: metadata.persons,
     },
-    { onConflict: "id" },
-  );
-  assertOk(photoErr, "photo upsert");
-
-  // 8. Rebuild the photo <-> athlete links (idempotent).
-  const { error: delErr } = await supabase.from("photo_athletes").delete().eq("photo_id", photoId);
-  assertOk(delErr, "photo_athletes clear");
-  if (athleteIds.length) {
-    const { error: linkErr } = await supabase
-      .from("photo_athletes")
-      .insert(athleteIds.map((athlete_id) => ({ photo_id: photoId, athlete_id })));
-    assertOk(linkErr, "photo_athletes insert");
-  }
-
-  // 9. Recompute the event's photo_count from done photos (no fragile increment).
-  if (eventId) {
-    const { count, error: countErr } = await supabase
-      .from("photos")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", eventId)
-      .eq("ingest_status", "done");
-    assertOk(countErr, "photo_count recount");
-    const { error: updErr } = await supabase
-      .from("events")
-      .update({ photo_count: count ?? 0 })
-      .eq("id", eventId);
-    assertOk(updErr, "event photo_count update");
-  }
+    clean_jpeg_base64: cleanBuffer.toString("base64"),
+    watermarked_jpeg_base64: watermarkedBuffer.toString("base64"),
+  });
 
   return {
-    photoId,
+    photoId: photo_id,
     hidrivePath,
     width: trueWidth,
     height: trueHeight,
