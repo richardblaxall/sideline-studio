@@ -11,14 +11,6 @@ type Props = {
   onDownload: (photo: SidelinePhoto) => void;
 };
 
-function ExifRow({ label, value }: { label: string; value?: string | undefined }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border py-2">
-      <span className="label-caps text-muted-foreground">{label}</span>
-      <span className="text-sm tabular-nums">{value ?? "—"}</span>
-    </div>
-  );
-}
 
 export function MetadataDrawer({
   photo,
@@ -96,17 +88,6 @@ export function MetadataDrawer({
                 </div>
               )}
 
-              <div className="mt-7">
-                <span className="label-caps text-muted-foreground">Capture data</span>
-                <div className="mt-3">
-                  <ExifRow label="Shutter" value={photo.exif_data?.shutter} />
-                  <ExifRow label="ISO" value={photo.exif_data?.iso} />
-                  <ExifRow label="Focal length" value={photo.exif_data?.focal_length} />
-                  <ExifRow label="Aperture" value={photo.exif_data?.aperture} />
-                  <ExifRow label="Camera" value={photo.exif_data?.camera_model} />
-                  <ExifRow label="Lens" value={photo.exif_data?.lens} />
-                </div>
-              </div>
 
               {unlocked && (
                 <button
