@@ -21,7 +21,7 @@ export function SiteHeader({
   onSeasonChange,
   onLoginClick,
 }: Props) {
-  const { isUnlocked: unlocked, lock } = useAccess();
+  const { isUnlocked: unlocked, isSignedIn, status, signOut } = useAccess();
 
 
   return (
