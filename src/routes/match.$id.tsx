@@ -39,7 +39,7 @@ export const Route = createFileRoute("/match/$id")({
 
 function MatchGallery() {
   const { id } = Route.useParams();
-  const { isUnlocked: unlocked, previews, token, ensurePreviews } = useAccess();
+  const { isUnlocked: unlocked, previews, ensurePreviews } = useAccess();
   const runDownload = useServerFn(downloadOriginal);
 
   const [query, setQuery] = useState("");
@@ -92,18 +92,18 @@ function MatchGallery() {
     );
 
   const runBatchDownload = async () => {
-    if (!token) return;
+    if (!unlocked) return;
     setDownloading(true);
     for (const photoId of selected) {
-      const result = await runDownload({ data: { photo_id: photoId, access_token: token } });
+      const result = await runDownload({ data: { photo_id: photoId } });
       if (result.ok && result.url) window.open(result.url, "_blank", "noopener");
     }
     setDownloading(false);
   };
 
   const downloadOne = async (photo: SidelinePhoto) => {
-    if (!token) return;
-    const result = await runDownload({ data: { photo_id: photo.id, access_token: token } });
+    if (!unlocked) return;
+    const result = await runDownload({ data: { photo_id: photo.id } });
     if (result.ok && result.url) window.open(result.url, "_blank", "noopener");
   };
 
