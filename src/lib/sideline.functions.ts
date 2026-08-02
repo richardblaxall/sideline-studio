@@ -1,42 +1,26 @@
-// Server functions backing the private-gallery flow.
+// Server functions backing the client-download flow.
 // These are the app-internal equivalents of the planned
 // `verify-access`, `download-original` and `ingest-photo` endpoints.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const verifyAccessInput = z.object({
-  event_id: z.string().uuid(),
-  passcode: z.string().min(1).max(200).optional(),
-  token: z.string().min(1).max(500).optional(),
+  passcode: z.string().min(1).max(200),
 });
 
-/** POST {event_id, passcode | token} -> short-lived access token for that event. */
+/** POST {passcode} -> short-lived global access token covering every gallery. */
 export const verifyAccess = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => verifyAccessInput.parse(data))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const expected = process.env["SIDELINE_CLIENT_PASSCODE"];
+    if (!expected) return { ok: false as const, reason: "unavailable" as const };
+
     const { mintAccessToken, safeEqual } = await import("./sideline-access.server");
+    if (!safeEqual(data.passcode, expected)) {
+      return { ok: false as const, reason: "invalid" as const };
+    }
 
-    const { data: rows, error } = await supabaseAdmin
-      .from("event_access")
-      .select("passcode_hash, access_token, expires_at")
-      .eq("event_id", data.event_id);
-
-    if (error) return { ok: false as const, reason: "unavailable" as const };
-
-    const now = Date.now();
-    const match = (rows ?? []).find((row) => {
-      if (row.expires_at && new Date(row.expires_at).getTime() < now) return false;
-      if (data.token && row.access_token) return safeEqual(data.token, row.access_token);
-      if (data.passcode && row.passcode_hash?.startsWith("demo:")) {
-        return safeEqual(data.passcode, row.passcode_hash.slice(5));
-      }
-      return false;
-    });
-
-    if (!match) return { ok: false as const, reason: "invalid" as const };
-
-    const minted = mintAccessToken(data.event_id);
+    const minted = mintAccessToken();
     return { ok: true as const, ...minted };
   });
 
@@ -45,13 +29,12 @@ const cleanPreviewsInput = z.object({
   access_token: z.string().min(1).max(2000),
 });
 
-/** Returns RLS-gated clean (un-watermarked) preview URLs for an unlocked event. */
+/** Returns clean (un-watermarked) preview URLs for one event to unlocked clients. */
 export const getCleanPreviews = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => cleanPreviewsInput.parse(data))
   .handler(async ({ data }) => {
     const { verifyAccessToken } = await import("./sideline-access.server");
-    const eventId = verifyAccessToken(data.access_token);
-    if (!eventId || eventId !== data.event_id) {
+    if (!verifyAccessToken(data.access_token)) {
       return { ok: false as const, previews: {} as Record<string, string> };
     }
 
@@ -59,7 +42,7 @@ export const getCleanPreviews = createServerFn({ method: "POST" })
     const { data: rows } = await supabaseAdmin
       .from("photos")
       .select("id, clean_preview_url")
-      .eq("event_id", eventId);
+      .eq("event_id", data.event_id);
 
     const previews: Record<string, string> = {};
     for (const row of rows ?? []) {
@@ -67,6 +50,7 @@ export const getCleanPreviews = createServerFn({ method: "POST" })
     }
     return { ok: true as const, previews };
   });
+
 
 const downloadInput = z.object({
   photo_id: z.string().uuid(),

@@ -10,7 +10,6 @@ type Props = {
   season?: string;
   onSeasonChange?: (season: string) => void;
   onLoginClick: () => void;
-  eventId?: string | null;
 };
 
 export function SiteHeader({
@@ -21,10 +20,9 @@ export function SiteHeader({
   season,
   onSeasonChange,
   onLoginClick,
-  eventId,
 }: Props) {
-  const { isUnlockedFor, lock } = useAccess();
-  const unlocked = Boolean(eventId) && isUnlockedFor(eventId!);
+  const { isUnlocked: unlocked, lock } = useAccess();
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
