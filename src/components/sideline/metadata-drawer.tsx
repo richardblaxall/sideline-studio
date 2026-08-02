@@ -11,7 +11,7 @@ type Props = {
   onDownload: (photo: SidelinePhoto) => void;
 };
 
-function ExifRow({ label, value }: { label: string; value?: string }) {
+function ExifRow({ label, value }: { label: string; value?: string | undefined }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border py-2">
       <span className="label-caps text-muted-foreground">{label}</span>
