@@ -88,7 +88,7 @@ async function hidriveFetch(
       Authorization: `Bearer ${accessToken}`,
       ...(init.body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },
-    body: init.body,
+    body: init.body ?? null,
   });
   if (!res.ok) {
     throw new Error(`HiDrive REST ${init.method} ${path} failed (${res.status}).`);
