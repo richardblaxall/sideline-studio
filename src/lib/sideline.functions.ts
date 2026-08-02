@@ -1,40 +1,31 @@
 // Server functions backing the client-download flow.
-// These are the app-internal equivalents of the planned
-// `verify-access`, `download-original` and `ingest-photo` endpoints.
+// Client access is account-based and invite-only: users sign in with email +
+// password, and downloads unlock only once their email is on the invite list
+// and approved.
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const verifyAccessInput = z.object({
-  passcode: z.string().min(1).max(200),
-});
-
-/** POST {passcode} -> short-lived global access token covering every gallery. */
-export const verifyAccess = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => verifyAccessInput.parse(data))
-  .handler(async ({ data }) => {
-    const expected = process.env["SIDELINE_CLIENT_PASSCODE"];
-    if (!expected) return { ok: false as const, reason: "unavailable" as const };
-
-    const { mintAccessToken, safeEqual } = await import("./sideline-access.server");
-    if (!safeEqual(data.passcode, expected)) {
-      return { ok: false as const, reason: "invalid" as const };
-    }
-
-    const minted = mintAccessToken();
-    return { ok: true as const, ...minted };
+/** Returns whether the signed-in user is an approved client. */
+export const getAccessStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { isApprovedClient } = await import("./sideline-access.server");
+    const approved = await isApprovedClient(context.userId);
+    return { approved, status: approved ? ("approved" as const) : ("pending" as const) };
   });
 
 const cleanPreviewsInput = z.object({
   event_id: z.string().uuid(),
-  access_token: z.string().min(1).max(2000),
 });
 
-/** Returns clean (un-watermarked) preview URLs for one event to unlocked clients. */
+/** Returns clean (un-watermarked) preview URLs for one event to approved clients. */
 export const getCleanPreviews = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => cleanPreviewsInput.parse(data))
-  .handler(async ({ data }) => {
-    const { verifyAccessToken } = await import("./sideline-access.server");
-    if (!verifyAccessToken(data.access_token)) {
+  .handler(async ({ data, context }) => {
+    const { isApprovedClient } = await import("./sideline-access.server");
+    if (!(await isApprovedClient(context.userId))) {
       return { ok: false as const, previews: {} as Record<string, string> };
     }
 
@@ -51,18 +42,17 @@ export const getCleanPreviews = createServerFn({ method: "POST" })
     return { ok: true as const, previews };
   });
 
-
 const downloadInput = z.object({
   photo_id: z.string().uuid(),
-  access_token: z.string().min(1).max(2000),
 });
 
-/** POST {photo_id} + client token -> time-limited download URL for the master file. */
+/** POST {photo_id} -> time-limited download URL for the master file. */
 export const downloadOriginal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => downloadInput.parse(data))
-  .handler(async ({ data }) => {
-    const { verifyAccessToken } = await import("./sideline-access.server");
-    if (!verifyAccessToken(data.access_token)) {
+  .handler(async ({ data, context }) => {
+    const { isApprovedClient } = await import("./sideline-access.server");
+    if (!(await isApprovedClient(context.userId))) {
       return { ok: false as const, reason: "unauthorized" as const };
     }
 
@@ -74,7 +64,6 @@ export const downloadOriginal = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!photo) return { ok: false as const, reason: "unauthorized" as const };
-
 
     // Master-file delivery is wired up later; the clean preview stands in for now
     // and the master path is never returned to the client.
