@@ -21,10 +21,12 @@ export function LoginModal({ open, onClose, eventId, eventTitle }: Props) {
     if (!eventId) return;
     setPending(true);
     setError(null);
+    const trimmedPasscode = passcode.trim();
+    const trimmedToken = accessToken.trim();
     const result = await unlock({
       eventId,
-      passcode: passcode.trim() || undefined,
-      token: accessToken.trim() || undefined,
+      ...(trimmedPasscode ? { passcode: trimmedPasscode } : {}),
+      ...(trimmedToken ? { token: trimmedToken } : {}),
     });
     setPending(false);
     if (!result.ok) {
