@@ -114,7 +114,8 @@ function MatchGallery() {
         onQueryChange={setQuery}
         placeholder="Search this match — athletes, jersey numbers, captions"
         onLoginClick={() => setLoginOpen(true)}
-        eventId={id}
+      />
+
       />
 
       <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-8">
@@ -253,12 +254,8 @@ function MatchGallery() {
         onDownload={downloadOne}
       />
 
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        eventId={id}
-        eventTitle={event?.title ?? null}
-      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+
     </div>
   );
 }
