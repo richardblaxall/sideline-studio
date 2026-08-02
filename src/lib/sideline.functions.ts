@@ -57,24 +57,24 @@ const downloadInput = z.object({
   access_token: z.string().min(1).max(2000),
 });
 
-/** POST {photo_id} + access token -> time-limited download URL for the master file. */
+/** POST {photo_id} + client token -> time-limited download URL for the master file. */
 export const downloadOriginal = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => downloadInput.parse(data))
   .handler(async ({ data }) => {
     const { verifyAccessToken } = await import("./sideline-access.server");
-    const eventId = verifyAccessToken(data.access_token);
-    if (!eventId) return { ok: false as const, reason: "unauthorized" as const };
+    if (!verifyAccessToken(data.access_token)) {
+      return { ok: false as const, reason: "unauthorized" as const };
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: photo } = await supabaseAdmin
       .from("photos")
-      .select("id, event_id, clean_preview_url, hidrive_original_path")
+      .select("id, clean_preview_url, hidrive_original_path")
       .eq("id", data.photo_id)
       .maybeSingle();
 
-    if (!photo || photo.event_id !== eventId) {
-      return { ok: false as const, reason: "unauthorized" as const };
-    }
+    if (!photo) return { ok: false as const, reason: "unauthorized" as const };
+
 
     // Master-file delivery is wired up later; the clean preview stands in for now
     // and the master path is never returned to the client.
