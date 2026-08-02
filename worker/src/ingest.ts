@@ -159,7 +159,12 @@ export async function ingestPhoto(args: IngestArgs): Promise<IngestResult> {
     .upload(watermarkedKey, watermarkedBuffer, { contentType: "image/jpeg", upsert: true });
   assertOk(wmUpload.error, "watermarked upload");
 
-  const publicUrl = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(watermarkedKey).data.publicUrl;
+  // The bucket stays PRIVATE (workspace guardrail blocks public buckets), so getPublicUrl's
+  // /object/public/... form would 404. Instead we store a stable, non-expiring same-origin path
+  // served by the app route src/routes/api/public/previews.$.tsx, which performs the anon-key
+  // object read (apikey header) that our anon SELECT policy on public-previews allows.
+  const publicUrl = `/api/public/previews/${watermarkedKey}`;
+
 
   // 6. Upsert athletes and collect their ids.
   const athleteIds: string[] = [];

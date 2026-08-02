@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchIdRouteImport } from './routes/match.$id'
+import { Route as ApiPublicPreviewsSplatRouteImport } from './routes/api/public/previews.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const MatchIdRoute = MatchIdRouteImport.update({
   path: '/match/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPreviewsSplatRoute = ApiPublicPreviewsSplatRouteImport.update({
+  id: '/api/public/previews/$',
+  path: '/api/public/previews/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/match/$id': typeof MatchIdRoute
+  '/api/public/previews/$': typeof ApiPublicPreviewsSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/match/$id'
+  fullPaths: '/' | '/match/$id' | '/api/public/previews/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/match/$id'
-  id: '__root__' | '/' | '/match/$id'
+  to: '/' | '/match/$id' | '/api/public/previews/$'
+  id: '__root__' | '/' | '/match/$id' | '/api/public/previews/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MatchIdRoute: typeof MatchIdRoute
+  ApiPublicPreviewsSplatRoute: typeof ApiPublicPreviewsSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,13 +75,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/previews/$': {
+      id: '/api/public/previews/$'
+      path: '/api/public/previews/$'
+      fullPath: '/api/public/previews/$'
+      preLoaderRoute: typeof ApiPublicPreviewsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MatchIdRoute: MatchIdRoute,
+  ApiPublicPreviewsSplatRoute: ApiPublicPreviewsSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
