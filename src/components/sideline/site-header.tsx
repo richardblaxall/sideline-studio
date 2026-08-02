@@ -21,7 +21,7 @@ export function SiteHeader({
   onSeasonChange,
   onLoginClick,
 }: Props) {
-  const { isUnlocked: unlocked, lock } = useAccess();
+  const { isUnlocked: unlocked, isSignedIn, status, signOut } = useAccess();
 
 
   return (
@@ -60,14 +60,23 @@ export function SiteHeader({
             </select>
           )}
 
-          {unlocked ? (
-            <button
-              type="button"
-              onClick={lock}
-              className="label-caps border border-accent px-3 py-2.5 text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              Client mode · Lock
-            </button>
+          {isSignedIn ? (
+            <div className="flex items-center gap-2">
+              <span className="label-caps hidden text-muted-foreground sm:inline">
+                {unlocked
+                  ? "Client mode"
+                  : status === "checking"
+                    ? "Checking access"
+                    : "Awaiting approval"}
+              </span>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="label-caps border border-accent px-3 py-2.5 text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                Sign out
+              </button>
+            </div>
           ) : (
             <button
               type="button"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { KeyRound, Loader2, X } from "lucide-react";
+import { Loader2, ShieldCheck, X } from "lucide-react";
 import { useAccess } from "./access-provider";
 
 type Props = {
@@ -8,28 +8,47 @@ type Props = {
   onClose: () => void;
 };
 
+type Mode = "signin" | "signup";
+
 export function LoginModal({ open, onClose }: Props) {
-  const { unlock } = useAccess();
-  const [passcode, setPasscode] = useState("");
+  const { signIn, signUp, status } = useAccess();
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const reset = () => {
+    setError(null);
+    setNotice(null);
+  };
 
   const submit = async () => {
-    const trimmed = passcode.trim();
-    if (!trimmed) return;
-    setPending(true);
-    setError(null);
-    const result = await unlock({ passcode: trimmed });
-    setPending(false);
-    if (!result.ok) {
-      setError(
-        result.reason === "unavailable"
-          ? "Access service unavailable. Try again shortly."
-          : "That passcode is not valid.",
-      );
+    const mail = email.trim().toLowerCase();
+    if (!mail || password.length < 6) {
+      setError("Enter your email and a password of at least 6 characters.");
       return;
     }
-    setPasscode("");
+    setPending(true);
+    reset();
+    const result = mode === "signin" ? await signIn({ email: mail, password }) : await signUp({ email: mail, password });
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.message ?? "Something went wrong. Try again.");
+      return;
+    }
+    if (result.needsConfirmation) {
+      setNotice("Account created. Confirm your email address, then sign in.");
+      setPassword("");
+      return;
+    }
+    setPassword("");
+    if (status === "pending") {
+      setNotice("Signed in. Your account is awaiting access approval.");
+      return;
+    }
     onClose();
   };
 
@@ -55,7 +74,7 @@ export function LoginModal({ open, onClose }: Props) {
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             role="dialog"
             aria-modal="true"
-            aria-label="Client login"
+            aria-label="Client account"
           >
             <button
               type="button"
@@ -67,43 +86,73 @@ export function LoginModal({ open, onClose }: Props) {
             </button>
 
             <div className="flex items-center gap-2 text-accent">
-              <KeyRound className="size-4" />
+              <ShieldCheck className="size-4" />
               <span className="label-caps">Client access</span>
             </div>
-            <h2 className="mt-3 text-xl font-semibold tracking-tight">Client login</h2>
+            <h2 className="mt-3 text-xl font-semibold tracking-tight">
+              {mode === "signin" ? "Sign in" : "Create your account"}
+            </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Enter your client passcode to unlock clean previews and high-resolution downloads
-              across every gallery.
+              Sideline is invite-only. Create an account with the email address we hold for you —
+              downloads unlock once that address is confirmed and approved.
             </p>
 
-            <div className="mt-6">
-              <label htmlFor="sl-passcode" className="label-caps text-muted-foreground">
-                Passcode
-              </label>
-              <input
-                id="sl-passcode"
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void submit();
-                }}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
-              />
+            <div className="mt-6 space-y-4">
+              <div>
+                <label htmlFor="sl-email" className="label-caps text-muted-foreground">
+                  Email
+                </label>
+                <input
+                  id="sl-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="you@club.com"
+                  className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+                />
+              </div>
+              <div>
+                <label htmlFor="sl-password" className="label-caps text-muted-foreground">
+                  Password
+                </label>
+                <input
+                  id="sl-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void submit();
+                  }}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  placeholder="••••••••"
+                  className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+                />
+              </div>
             </div>
 
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+            {notice && <p className="mt-4 text-sm text-accent">{notice}</p>}
 
             <button
               type="button"
               onClick={submit}
-              disabled={pending || !passcode.trim()}
+              disabled={pending}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 bg-chrome px-4 py-2.5 text-sm font-medium text-chrome-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {pending && <Loader2 className="size-4 animate-spin" />}
-              Unlock downloads
+              {mode === "signin" ? "Sign in" : "Create account"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                reset();
+              }}
+              className="mt-4 w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {mode === "signin" ? "No account yet? Create one" : "Already have an account? Sign in"}
             </button>
           </motion.div>
         </motion.div>
