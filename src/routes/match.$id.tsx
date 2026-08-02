@@ -116,7 +116,7 @@ function MatchGallery() {
         onLoginClick={() => setLoginOpen(true)}
       />
 
-      />
+
 
       <main className="mx-auto max-w-[1600px] px-5 py-8 sm:px-8">
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-label="Breadcrumb">
