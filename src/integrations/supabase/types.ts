@@ -14,7 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      athletes: {
+        Row: {
+          full_name: string
+          id: string
+          jersey_number: string | null
+          team_name: string | null
+        }
+        Insert: {
+          full_name: string
+          id?: string
+          jersey_number?: string | null
+          team_name?: string | null
+        }
+        Update: {
+          full_name?: string
+          id?: string
+          jersey_number?: string | null
+          team_name?: string | null
+        }
+        Relationships: []
+      }
+      event_access: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          event_id: string | null
+          expires_at: string | null
+          id: string
+          passcode_hash: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          event_id?: string | null
+          expires_at?: string | null
+          id?: string
+          passcode_hash?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          event_id?: string | null
+          expires_at?: string | null
+          id?: string
+          passcode_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_access_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          cover_photo_url: string | null
+          created_at: string
+          event_date: string | null
+          id: string
+          location: string | null
+          photo_count: number
+          season: string
+          title: string
+        }
+        Insert: {
+          cover_photo_url?: string | null
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          photo_count?: number
+          season?: string
+          title: string
+        }
+        Update: {
+          cover_photo_url?: string | null
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          photo_count?: number
+          season?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      photo_athletes: {
+        Row: {
+          athlete_id: string
+          photo_id: string
+        }
+        Insert: {
+          athlete_id: string
+          photo_id: string
+        }
+        Update: {
+          athlete_id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_athletes_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photos: {
+        Row: {
+          caption: string | null
+          clean_preview_url: string | null
+          created_at: string
+          date_taken: string | null
+          event_id: string | null
+          exif_data: Json | null
+          headline: string | null
+          height: number | null
+          hidrive_original_path: string | null
+          id: string
+          ingest_status: string
+          processed_at: string | null
+          public_watermarked_url: string | null
+          width: number | null
+        }
+        Insert: {
+          caption?: string | null
+          clean_preview_url?: string | null
+          created_at?: string
+          date_taken?: string | null
+          event_id?: string | null
+          exif_data?: Json | null
+          headline?: string | null
+          height?: number | null
+          hidrive_original_path?: string | null
+          id?: string
+          ingest_status?: string
+          processed_at?: string | null
+          public_watermarked_url?: string | null
+          width?: number | null
+        }
+        Update: {
+          caption?: string | null
+          clean_preview_url?: string | null
+          created_at?: string
+          date_taken?: string | null
+          event_id?: string | null
+          exif_data?: Json | null
+          headline?: string | null
+          height?: number | null
+          hidrive_original_path?: string | null
+          id?: string
+          ingest_status?: string
+          processed_at?: string | null
+          public_watermarked_url?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
