@@ -35,41 +35,6 @@ export type Database = {
         }
         Relationships: []
       }
-      event_access: {
-        Row: {
-          access_token: string | null
-          created_at: string
-          event_id: string | null
-          expires_at: string | null
-          id: string
-          passcode_hash: string | null
-        }
-        Insert: {
-          access_token?: string | null
-          created_at?: string
-          event_id?: string | null
-          expires_at?: string | null
-          id?: string
-          passcode_hash?: string | null
-        }
-        Update: {
-          access_token?: string | null
-          created_at?: string
-          event_id?: string | null
-          expires_at?: string | null
-          id?: string
-          passcode_hash?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_access_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       events: {
         Row: {
           cover_photo_url: string | null
@@ -100,6 +65,33 @@ export type Database = {
           photo_count?: number
           season?: string
           title?: string
+        }
+        Relationships: []
+      }
+      invited_clients: {
+        Row: {
+          approved: boolean
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -197,7 +189,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_approved_client: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
