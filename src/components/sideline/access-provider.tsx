@@ -35,7 +35,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(
     async ({ eventId, passcode, token }: { eventId: string; passcode?: string; token?: string }) => {
       const result = await runVerify({
-        data: { event_id: eventId, passcode, token },
+        data: {
+          event_id: eventId,
+          ...(passcode ? { passcode } : {}),
+          ...(token ? { token } : {}),
+        },
       });
       if (!result.ok) return { ok: false, reason: result.reason };
 
