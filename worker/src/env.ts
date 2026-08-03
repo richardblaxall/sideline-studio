@@ -39,9 +39,9 @@ export const env = {
     return required("INGEST_RECEIVE_SECRET");
   },
 
-  // Branding used in the watermark text.
+  // Brand word used in the watermark text ("© <BRAND>"). Blank falls back to "Photerior".
   get BRAND(): string {
-    return optional("BRAND", "SIDELINE STUDIO");
+    return optional("BRAND", "Photerior");
   },
 
   // Folder (relative to HIDRIVE_WEBDAV_URL) the poller scans for new masters.
