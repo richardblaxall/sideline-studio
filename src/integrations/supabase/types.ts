@@ -138,7 +138,6 @@ export type Database = {
           hidrive_original_path: string | null
           id: string
           ingest_status: string
-          is_published: boolean
           processed_at: string | null
           public_watermarked_url: string | null
           width: number | null
@@ -155,7 +154,6 @@ export type Database = {
           hidrive_original_path?: string | null
           id?: string
           ingest_status?: string
-          is_published?: boolean
           processed_at?: string | null
           public_watermarked_url?: string | null
           width?: number | null
@@ -172,7 +170,6 @@ export type Database = {
           hidrive_original_path?: string | null
           id?: string
           ingest_status?: string
-          is_published?: boolean
           processed_at?: string | null
           public_watermarked_url?: string | null
           width?: number | null
