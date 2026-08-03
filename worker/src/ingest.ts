@@ -41,20 +41,46 @@ function escapeXml(s: string): string {
 
 /**
  * Build an SVG overlay the size of the resized image: a horizontal grey band
- * (rgba(128,128,128,0.4)) whose height is 20% of the image height, with its TOP edge at
- * 66.6% of the image height, and centred white copyright text.
+ * (rgba(128,128,128,0.4)) anchored to the BOTTOM of the image (bottom edge flush,
+ * small margin), with centred white "© <brand>" copyright text.
+ *
+ * The band height tracks the SHORTER edge (≈13%), so it reads as a consistent visual
+ * thickness on both portrait and landscape frames and never crosses the centre of the
+ * subject. The font size is auto-fitted so the full string fits within the image width
+ * with padding on both sides — the text can never run off either edge.
  */
 function buildWatermarkSvg(imgW: number, imgH: number, brand: string): string {
-  const bandHeight = Math.round(imgH * 0.2);
-  const bandTop = Math.round(imgH * 0.666);
-  const fontSize = Math.max(12, Math.round(bandHeight * 0.26));
+  const word = brand.trim() || "Photerior";
+  const label = `© ${word}`;
+  const text = escapeXml(label);
+
+  // Band sizing keyed off the shorter edge for orientation-independent thickness.
+  const shortEdge = Math.min(imgW, imgH);
+  const bandHeight = Math.round(shortEdge * 0.13);
+  // Flush to the bottom with a small breathing margin (~1% of the short edge).
+  const margin = Math.round(shortEdge * 0.01);
+  const bandTop = imgH - bandHeight - margin;
   const centerY = bandTop + bandHeight / 2;
-  const text = escapeXml(`© ${brand} / SPORTS PHOTOGRAPHY — DISPLAY ONLY`);
+
+  // Auto-fit the font so the whole string fits within the width with side padding.
+  // Estimate advance width per glyph relative to the font size (sans-serif ≈ 0.6em avg),
+  // plus proportional letter-spacing, then solve for the largest size that fits.
+  const sidePadding = Math.round(imgW * 0.06); // 6% padding each side
+  const usableWidth = Math.max(1, imgW - 2 * sidePadding);
+  const charFactor = 0.6;
+  const letterSpacingFactor = 0.05;
+  const n = Math.max(1, label.length);
+  const advancePerSize = charFactor * n + letterSpacingFactor * Math.max(0, n - 1);
+  const fitFontSize = usableWidth / advancePerSize;
+  const bandCap = bandHeight * 0.5; // keep the text comfortably inside the band
+  const fontSize = Math.max(12, Math.floor(Math.min(fitFontSize, bandCap)));
+  const letterSpacing = (fontSize * letterSpacingFactor).toFixed(2);
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${imgW}" height="${imgH}" viewBox="0 0 ${imgW} ${imgH}">
   <rect x="0" y="${bandTop}" width="${imgW}" height="${bandHeight}" fill="rgba(128,128,128,0.4)"/>
   <text x="${imgW / 2}" y="${centerY}" fill="#ffffff" font-family="sans-serif" font-weight="600"
     font-size="${fontSize}" text-anchor="middle" dominant-baseline="central"
-    letter-spacing="1">${text}</text>
+    letter-spacing="${letterSpacing}">${text}</text>
 </svg>`;
 }
 

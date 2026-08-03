@@ -10,6 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# Local env files (secrets). The worker loads worker/.env via dotenv; never commit it.
+.env
+.env.*
+!.env.example
+worker/.env
+worker/.env.*
+!worker/.env.example
 .output
 .vinxi
 .tanstack/**

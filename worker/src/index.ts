@@ -8,9 +8,18 @@
 // it and the worker runs a poll in the background.
 
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { config as loadDotenv } from "dotenv";
 import { ingestPhoto } from "./ingest.js";
 import { pollIngestFolder } from "./poll.js";
 import { env } from "./env.js";
+
+// Load worker/.env before anything reads process.env. The env getters in ./env.js are lazy
+// (evaluated at call time, not import time), so this runs early enough to populate them.
+// Resolve relative to this module so it works regardless of the current working directory.
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+loadDotenv({ path: resolve(moduleDir, "../.env") });
 
 function startServer(): void {
   const secret = env.INGEST_TRIGGER_SECRET;

@@ -35,6 +35,10 @@ sudo apt-get install -y libimage-exiftool-perl fontconfig fonts-dejavu-core   # 
 cp .env.example .env        # fill in HiDrive WebDAV + APP_INGEST_URL + INGEST_RECEIVE_SECRET
 ```
 
+`worker/.env` is loaded automatically at startup (via `dotenv`, resolved relative to the
+entry point), so `npm run ingest` / `poll` / `serve` pick up the values without any
+`set -a; . ./.env` dance.
+
 > `/api/ingest/receive` only exists once the app is **published** from Lovable Cloud (and
 > `INGEST_RECEIVE_SECRET` is set as an app secret). Until then the worker's POSTs will 404.
 
