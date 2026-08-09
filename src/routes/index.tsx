@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
   component: SeasonCollections,
 });
 
-const DEFAULT_SEASON = "2025/26 Season";
+const DEFAULT_SEASON = "2026/27 Season";
 
 function SeasonCollections() {
   const [query, setQuery] = useState("");
