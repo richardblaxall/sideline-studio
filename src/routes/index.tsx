@@ -167,7 +167,7 @@ function SeasonCollections() {
 
       <footer className="mt-16 border-t border-border px-5 py-8 sm:px-8">
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Sideline Sports Wire — all frames licensed, never free.
+          © {new Date().getFullYear()} Sideline{"\u00a0"}
         </p>
       </footer>
 
